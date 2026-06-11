@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SubjectService.Controllers;
 using SubjectService.Data;
 using SubjectService.DTOs;
 using SubjectService.Models;
+using System.Security.Claims;
 using Xunit;
 
 namespace SubjectService.Tests;
@@ -16,6 +18,23 @@ public class TopicsControllerTests
             .UseInMemoryDatabase(dbName)
             .Options;
         return new SubjectDbContext(options);
+    }
+
+    private static TopicsController CreateController(SubjectDbContext context, int userId = 1)
+    {
+        var controller = new TopicsController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"))
+            }
+        };
+        return controller;
     }
 
     [Fact]
@@ -31,7 +50,7 @@ public class TopicsControllerTests
         context.Subjects.Add(subject);
         await context.SaveChangesAsync();
 
-        var controller = new TopicsController(context);
+        var controller = CreateController(context, userId: 1);
         var dto = new CreateTopicDto
         {
             SubjectId = subject.Id,
@@ -54,11 +73,11 @@ public class TopicsControllerTests
     public async Task CreateTopic_ReturnsBadRequest_WhenSubjectDoesNotExist()
     {
         using var context = CreateContext("Topic_NoSubject");
-        var controller = new TopicsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateTopicDto
         {
-            SubjectId = 999,  // does not exist
+            SubjectId = 999,
             Title = "SQL Joins",
             Difficulty = "Medium",
             Status = "Not Started"
@@ -89,7 +108,7 @@ public class TopicsControllerTests
         );
         await context.SaveChangesAsync();
 
-        var controller = new TopicsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetTopicsBySubjectId(subject.Id);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -119,7 +138,7 @@ public class TopicsControllerTests
         context.Topics.Add(topic);
         await context.SaveChangesAsync();
 
-        var controller = new TopicsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetTopicById(topic.Id);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -131,7 +150,7 @@ public class TopicsControllerTests
     public async Task GetTopicById_ReturnsNotFound_WhenTopicDoesNotExist()
     {
         using var context = CreateContext("Topic_NotFound");
-        var controller = new TopicsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var result = await controller.GetTopicById(9999);
 

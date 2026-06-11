@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SubjectService.Controllers;
 using SubjectService.Data;
 using SubjectService.DTOs;
 using SubjectService.Models;
+using System.Security.Claims;
 using Xunit;
 
 namespace SubjectService.Tests;
@@ -18,11 +20,28 @@ public class SubjectsControllerTests
         return new SubjectDbContext(options);
     }
 
+    private static SubjectsController CreateController(SubjectDbContext context, int userId = 1)
+    {
+        var controller = new SubjectsController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"))
+            }
+        };
+        return controller;
+    }
+
     [Fact]
     public async Task CreateSubject_ReturnsOk_WithCorrectData()
     {
         using var context = CreateContext("Subject_Create");
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateSubjectDto
         {
@@ -59,7 +78,7 @@ public class SubjectsControllerTests
         context.Subjects.Add(subject);
         await context.SaveChangesAsync();
 
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetSubjectById(subject.Id);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -72,7 +91,7 @@ public class SubjectsControllerTests
     public async Task GetSubjectById_ReturnsNotFound_WhenSubjectDoesNotExist()
     {
         using var context = CreateContext("Subject_NotFound");
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var result = await controller.GetSubjectById(999);
 
@@ -91,7 +110,7 @@ public class SubjectsControllerTests
         );
         await context.SaveChangesAsync();
 
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetSubjectsByUserId(1);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -116,7 +135,7 @@ public class SubjectsControllerTests
         context.Subjects.Add(subject);
         await context.SaveChangesAsync();
 
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.DeleteSubject(subject.Id);
 
         Assert.IsType<OkObjectResult>(result);
@@ -127,7 +146,7 @@ public class SubjectsControllerTests
     public async Task DeleteSubject_ReturnsNotFound_WhenSubjectDoesNotExist()
     {
         using var context = CreateContext("Subject_DeleteNotFound");
-        var controller = new SubjectsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var result = await controller.DeleteSubject(999);
 

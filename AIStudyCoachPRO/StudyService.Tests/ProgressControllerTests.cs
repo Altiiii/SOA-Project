@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Controllers;
 using StudyService.Data;
 using StudyService.Models;
+using System.Security.Claims;
 using System.Text.Json;
 using Xunit;
 
@@ -18,13 +20,27 @@ public class ProgressControllerTests
         return new StudyDbContext(options);
     }
 
+    private static ProgressController CreateController(StudyDbContext context, int userId = 1)
+    {
+        var controller = new ProgressController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"))
+            }
+        };
+        return controller;
+    }
+
     [Fact]
     public async Task GetUserProgress_Returns105Minutes_175Hours_55Avg_WithOneWeakArea()
     {
-        // Arrange: 105 study minutes
-        // Quiz 1: 4/10 = 40% (SQL Joins) → weak area
-        // Quiz 2: 7/10 = 70%             → not weak
-        // Average: (40 + 70) / 2 = 55%
+        // 105 study min; quiz 4/10=40% (weak) and 7/10=70% → average 55%
         using var context = CreateContext("Progress_Scenario1");
 
         context.StudySessions.Add(new StudySession
@@ -35,21 +51,18 @@ public class ProgressControllerTests
         context.QuizResults.Add(new QuizResult
         {
             UserId = 1, SubjectId = 1, TopicId = 1,
-            Score = 4, TotalQuestions = 10  // 40% — SQL Joins — weak area
+            Score = 4, TotalQuestions = 10
         });
         context.QuizResults.Add(new QuizResult
         {
             UserId = 1, SubjectId = 1, TopicId = 2,
-            Score = 7, TotalQuestions = 10  // 70% — not weak
+            Score = 7, TotalQuestions = 10
         });
         await context.SaveChangesAsync();
 
-        var controller = new ProgressController(context);
-
-        // Act
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetUserProgress(1);
 
-        // Assert
         var ok = Assert.IsType<OkObjectResult>(result);
         var json = JsonSerializer.Serialize(ok.Value);
         using var doc = JsonDocument.Parse(json);
@@ -73,7 +86,7 @@ public class ProgressControllerTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new ProgressController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetUserProgress(1);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -89,7 +102,6 @@ public class ProgressControllerTests
     {
         using var context = CreateContext("Progress_SubjectFilter");
 
-        // Subject 1: 60 min, 80%
         context.StudySessions.Add(new StudySession
         {
             UserId = 1, SubjectId = 1, TopicId = 1, DurationMinutes = 60, Notes = ""
@@ -98,8 +110,7 @@ public class ProgressControllerTests
         {
             UserId = 1, SubjectId = 1, TopicId = 1, Score = 8, TotalQuestions = 10
         });
-
-        // Subject 2: must NOT appear in Subject 1 results
+        // Subject 2 data — must NOT appear in Subject 1 results
         context.StudySessions.Add(new StudySession
         {
             UserId = 1, SubjectId = 2, TopicId = 3, DurationMinutes = 90, Notes = ""
@@ -110,7 +121,7 @@ public class ProgressControllerTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new ProgressController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetUserProgressBySubject(1, 1);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -128,7 +139,7 @@ public class ProgressControllerTests
     public async Task GetUserProgressBySubject_ReturnsZeros_WhenNoDataExistsForSubject()
     {
         using var context = CreateContext("Progress_EmptySubject");
-        var controller = new ProgressController(context);
+        var controller = CreateController(context, userId: 1);
 
         var result = await controller.GetUserProgressBySubject(1, 99);
 
@@ -158,7 +169,7 @@ public class ProgressControllerTests
         });
         await context.SaveChangesAsync();
 
-        var controller = new ProgressController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetUserProgress(1);
 
         var ok = Assert.IsType<OkObjectResult>(result);

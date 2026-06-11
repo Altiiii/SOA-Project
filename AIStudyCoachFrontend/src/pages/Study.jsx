@@ -28,7 +28,7 @@ function Study() {
 
   const loadSubjects = async () => {
     try {
-      const response = await api.get("/subjects/");
+      const response = await api.get(`/subjects/user/${userId}`);
       setSubjects(response.data);
     } catch (error) {
       console.log("LOAD SUBJECTS ERROR:", error);

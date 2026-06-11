@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Controllers;
 using StudyService.Data;
 using StudyService.DTOs;
 using StudyService.Models;
+using System.Security.Claims;
 using Xunit;
 
 namespace StudyService.Tests;
@@ -18,11 +20,28 @@ public class QuizResultsControllerTests
         return new StudyDbContext(options);
     }
 
+    private static QuizResultsController CreateController(StudyDbContext context, int userId = 1)
+    {
+        var controller = new QuizResultsController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"))
+            }
+        };
+        return controller;
+    }
+
     [Fact]
     public async Task CreateQuizResult_ReturnsOk_AndPersistsToDatabase()
     {
         using var context = CreateContext("Quiz_Create");
-        var controller = new QuizResultsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateQuizResultDto
         {
@@ -44,12 +63,12 @@ public class QuizResultsControllerTests
     public async Task CreateQuizResult_ReturnsBadRequest_WhenScoreExceedsTotalQuestions()
     {
         using var context = CreateContext("Quiz_ScoreExceedsTotal");
-        var controller = new QuizResultsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateQuizResultDto
         {
             UserId = 1, SubjectId = 1, TopicId = 1,
-            Score = 15, TotalQuestions = 10  // 15 > 10 — invalid
+            Score = 15, TotalQuestions = 10
         };
 
         var result = await controller.CreateQuizResult(dto);
@@ -62,7 +81,7 @@ public class QuizResultsControllerTests
     public async Task CreateQuizResult_ReturnsBadRequest_WhenTotalQuestionsIsZero()
     {
         using var context = CreateContext("Quiz_ZeroTotal");
-        var controller = new QuizResultsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateQuizResultDto
         {
@@ -87,7 +106,8 @@ public class QuizResultsControllerTests
         );
         await context.SaveChangesAsync();
 
-        var controller = new QuizResultsController(context);
+        // Request as user 1 — should only see user 1's 2 results
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetQuizResultsByUserId(1);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -108,7 +128,7 @@ public class QuizResultsControllerTests
         context.QuizResults.Add(quiz);
         await context.SaveChangesAsync();
 
-        var controller = new QuizResultsController(context);
+        var controller = CreateController(context, userId: 1);
         var result = await controller.DeleteQuizResult(quiz.Id);
 
         Assert.IsType<OkObjectResult>(result);

@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Data;
 using StudyService.DTOs;
 using StudyService.Models;
+using System.Security.Claims;
 
 namespace StudyService.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class StudySessionsController : ControllerBase
@@ -17,10 +20,21 @@ namespace StudyService.Controllers
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllStudySessions()
+        private int GetCurrentUserId()
         {
-            var sessions = await _context.StudySessions.ToListAsync();
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(claim, out int id) ? id : -1;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMyStudySessions()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var sessions = await _context.StudySessions
+                .Where(s => s.UserId == userId)
+                .ToListAsync();
 
             return Ok(sessions);
         }
@@ -28,21 +42,27 @@ namespace StudyService.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudySessionById(int id)
         {
-            var session = await _context.StudySessions.FindAsync(id);
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var session = await _context.StudySessions
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
             if (session == null)
-            {
                 return NotFound("Study session not found.");
-            }
 
             return Ok(session);
         }
 
+        // Backwards-compatible route — always uses JWT userId
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetStudySessionsByUserId(int userId)
         {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == -1) return Unauthorized();
+
             var sessions = await _context.StudySessions
-                .Where(s => s.UserId == userId)
+                .Where(s => s.UserId == currentUserId)
                 .ToListAsync();
 
             return Ok(sessions);
@@ -51,14 +71,15 @@ namespace StudyService.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateStudySession(CreateStudySessionDto dto)
         {
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
             if (dto.DurationMinutes <= 0)
-            {
                 return BadRequest("Duration must be greater than 0.");
-            }
 
             var session = new StudySession
             {
-                UserId = dto.UserId,
+                UserId = userId,
                 SubjectId = dto.SubjectId,
                 TopicId = dto.TopicId,
                 DurationMinutes = dto.DurationMinutes,
@@ -74,12 +95,14 @@ namespace StudyService.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudySession(int id)
         {
-            var session = await _context.StudySessions.FindAsync(id);
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var session = await _context.StudySessions
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
             if (session == null)
-            {
                 return NotFound("Study session not found.");
-            }
 
             _context.StudySessions.Remove(session);
             await _context.SaveChangesAsync();

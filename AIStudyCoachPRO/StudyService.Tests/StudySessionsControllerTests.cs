@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Controllers;
 using StudyService.Data;
 using StudyService.DTOs;
 using StudyService.Models;
+using System.Security.Claims;
 using Xunit;
 
 namespace StudyService.Tests;
@@ -18,11 +20,28 @@ public class StudySessionsControllerTests
         return new StudyDbContext(options);
     }
 
+    private static StudySessionsController CreateController(StudyDbContext context, int userId = 1)
+    {
+        var controller = new StudySessionsController(context);
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"))
+            }
+        };
+        return controller;
+    }
+
     [Fact]
     public async Task CreateStudySession_ReturnsOk_AndPersistsDuration()
     {
         using var context = CreateContext("Session_Create");
-        var controller = new StudySessionsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateStudySessionDto
         {
@@ -36,6 +55,7 @@ public class StudySessionsControllerTests
         var session = Assert.IsType<StudySession>(ok.Value);
         Assert.Equal(60, session.DurationMinutes);
         Assert.Equal("Studied SQL Joins", session.Notes);
+        Assert.Equal(1, session.UserId);
         Assert.Equal(1, context.StudySessions.Count());
     }
 
@@ -43,7 +63,7 @@ public class StudySessionsControllerTests
     public async Task CreateStudySession_ReturnsBadRequest_WhenDurationIsZero()
     {
         using var context = CreateContext("Session_ZeroDuration");
-        var controller = new StudySessionsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateStudySessionDto
         {
@@ -61,7 +81,7 @@ public class StudySessionsControllerTests
     public async Task CreateStudySession_ReturnsBadRequest_WhenDurationIsNegative()
     {
         using var context = CreateContext("Session_NegDuration");
-        var controller = new StudySessionsController(context);
+        var controller = CreateController(context, userId: 1);
 
         var dto = new CreateStudySessionDto
         {
@@ -86,7 +106,8 @@ public class StudySessionsControllerTests
         );
         await context.SaveChangesAsync();
 
-        var controller = new StudySessionsController(context);
+        // Request as user 1 — should only see user 1's 2 sessions
+        var controller = CreateController(context, userId: 1);
         var result = await controller.GetStudySessionsByUserId(1);
 
         var ok = Assert.IsType<OkObjectResult>(result);

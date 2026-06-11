@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Data;
+using System.Security.Claims;
 
 namespace StudyService.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ProgressController : ControllerBase
@@ -15,15 +18,25 @@ namespace StudyService.Controllers
             _context = context;
         }
 
+        private int GetCurrentUserId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(claim, out int id) ? id : -1;
+        }
+
+        // URL userId is ignored — always uses JWT userId for security
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserProgress(int userId)
         {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == -1) return Unauthorized();
+
             var sessions = await _context.StudySessions
-                .Where(s => s.UserId == userId)
+                .Where(s => s.UserId == currentUserId)
                 .ToListAsync();
 
             var quizResults = await _context.QuizResults
-                .Where(q => q.UserId == userId)
+                .Where(q => q.UserId == currentUserId)
                 .ToListAsync();
 
             var totalStudyMinutes = sessions.Sum(s => s.DurationMinutes);
@@ -48,7 +61,7 @@ namespace StudyService.Controllers
 
             return Ok(new
             {
-                UserId = userId,
+                UserId = currentUserId,
                 TotalStudyMinutes = totalStudyMinutes,
                 TotalStudyHours = Math.Round(totalStudyMinutes / 60.0, 2),
                 TotalStudySessions = sessions.Count,
@@ -58,15 +71,19 @@ namespace StudyService.Controllers
             });
         }
 
+        // URL userId is ignored — always uses JWT userId for security
         [HttpGet("user/{userId}/subject/{subjectId}")]
         public async Task<IActionResult> GetUserProgressBySubject(int userId, int subjectId)
         {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == -1) return Unauthorized();
+
             var sessions = await _context.StudySessions
-                .Where(s => s.UserId == userId && s.SubjectId == subjectId)
+                .Where(s => s.UserId == currentUserId && s.SubjectId == subjectId)
                 .ToListAsync();
 
             var quizResults = await _context.QuizResults
-                .Where(q => q.UserId == userId && q.SubjectId == subjectId)
+                .Where(q => q.UserId == currentUserId && q.SubjectId == subjectId)
                 .ToListAsync();
 
             var totalStudyMinutes = sessions.Sum(s => s.DurationMinutes);
@@ -91,7 +108,7 @@ namespace StudyService.Controllers
 
             return Ok(new
             {
-                UserId = userId,
+                UserId = currentUserId,
                 SubjectId = subjectId,
                 TotalStudyMinutes = totalStudyMinutes,
                 TotalStudyHours = Math.Round(totalStudyMinutes / 60.0, 2),

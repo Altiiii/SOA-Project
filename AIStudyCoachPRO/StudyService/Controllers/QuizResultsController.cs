@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyService.Data;
 using StudyService.DTOs;
 using StudyService.Models;
+using System.Security.Claims;
 
 namespace StudyService.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class QuizResultsController : ControllerBase
@@ -17,10 +20,21 @@ namespace StudyService.Controllers
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllQuizResults()
+        private int GetCurrentUserId()
         {
-            var results = await _context.QuizResults.ToListAsync();
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(claim, out int id) ? id : -1;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMyQuizResults()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var results = await _context.QuizResults
+                .Where(q => q.UserId == userId)
+                .ToListAsync();
 
             return Ok(results);
         }
@@ -28,21 +42,27 @@ namespace StudyService.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetQuizResultById(int id)
         {
-            var result = await _context.QuizResults.FindAsync(id);
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var result = await _context.QuizResults
+                .FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
 
             if (result == null)
-            {
                 return NotFound("Quiz result not found.");
-            }
 
             return Ok(result);
         }
 
+        // Backwards-compatible route — always uses JWT userId
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetQuizResultsByUserId(int userId)
         {
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == -1) return Unauthorized();
+
             var results = await _context.QuizResults
-                .Where(q => q.UserId == userId)
+                .Where(q => q.UserId == currentUserId)
                 .ToListAsync();
 
             return Ok(results);
@@ -51,19 +71,18 @@ namespace StudyService.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateQuizResult(CreateQuizResultDto dto)
         {
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
             if (dto.TotalQuestions <= 0)
-            {
                 return BadRequest("Total questions must be greater than 0.");
-            }
 
             if (dto.Score < 0 || dto.Score > dto.TotalQuestions)
-            {
                 return BadRequest("Score must be between 0 and total questions.");
-            }
 
             var result = new QuizResult
             {
-                UserId = dto.UserId,
+                UserId = userId,
                 SubjectId = dto.SubjectId,
                 TopicId = dto.TopicId,
                 Score = dto.Score,
@@ -79,12 +98,14 @@ namespace StudyService.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteQuizResult(int id)
         {
-            var result = await _context.QuizResults.FindAsync(id);
+            var userId = GetCurrentUserId();
+            if (userId == -1) return Unauthorized();
+
+            var result = await _context.QuizResults
+                .FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
 
             if (result == null)
-            {
                 return NotFound("Quiz result not found.");
-            }
 
             _context.QuizResults.Remove(result);
             await _context.SaveChangesAsync();

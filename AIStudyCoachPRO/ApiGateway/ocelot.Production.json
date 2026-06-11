@@ -1,0 +1,124 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/Auth/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-userservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Users/",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-userservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/users/",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Users/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-userservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/users/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Subjects/",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-subjectservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/subjects/",
+      "UpstreamHttpMethod": [ "GET", "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Subjects/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-subjectservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/subjects/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Topics/",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-subjectservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/topics/",
+      "UpstreamHttpMethod": [ "GET", "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Topics/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-subjectservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/topics/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/StudySessions/",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-studyservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/study-sessions/",
+      "UpstreamHttpMethod": [ "GET", "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/StudySessions/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-studyservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/study-sessions/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/QuizResults/",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-studyservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/quiz-results/",
+      "UpstreamHttpMethod": [ "GET", "POST" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/QuizResults/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-studyservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/quiz-results/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Progress/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-studyservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/progress/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Recommendations/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "aistudycoach-recommendationservice.azurewebsites.net", "Port": 443 }
+      ],
+      "UpstreamPathTemplate": "/gateway/recommendations/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "https://aistudycoach-gateway.azurewebsites.net"
+  }
+}
