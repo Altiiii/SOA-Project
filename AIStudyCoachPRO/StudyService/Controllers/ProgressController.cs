@@ -27,11 +27,9 @@ namespace StudyService.Controllers
                 .ToListAsync();
 
             var totalStudyMinutes = sessions.Sum(s => s.DurationMinutes);
-
             var totalQuizzes = quizResults.Count;
 
             double averageScorePercentage = 0;
-
             if (quizResults.Any())
             {
                 averageScorePercentage = quizResults
@@ -51,6 +49,50 @@ namespace StudyService.Controllers
             return Ok(new
             {
                 UserId = userId,
+                TotalStudyMinutes = totalStudyMinutes,
+                TotalStudyHours = Math.Round(totalStudyMinutes / 60.0, 2),
+                TotalStudySessions = sessions.Count,
+                TotalQuizzes = totalQuizzes,
+                AverageScorePercentage = Math.Round(averageScorePercentage, 2),
+                WeakAreas = weakAreas
+            });
+        }
+
+        [HttpGet("user/{userId}/subject/{subjectId}")]
+        public async Task<IActionResult> GetUserProgressBySubject(int userId, int subjectId)
+        {
+            var sessions = await _context.StudySessions
+                .Where(s => s.UserId == userId && s.SubjectId == subjectId)
+                .ToListAsync();
+
+            var quizResults = await _context.QuizResults
+                .Where(q => q.UserId == userId && q.SubjectId == subjectId)
+                .ToListAsync();
+
+            var totalStudyMinutes = sessions.Sum(s => s.DurationMinutes);
+            var totalQuizzes = quizResults.Count;
+
+            double averageScorePercentage = 0;
+            if (quizResults.Any())
+            {
+                averageScorePercentage = quizResults
+                    .Average(q => (double)q.Score / q.TotalQuestions * 100);
+            }
+
+            var weakAreas = quizResults
+                .Where(q => ((double)q.Score / q.TotalQuestions * 100) < 50)
+                .Select(q => new
+                {
+                    q.SubjectId,
+                    q.TopicId,
+                    ScorePercentage = Math.Round((double)q.Score / q.TotalQuestions * 100, 2)
+                })
+                .ToList();
+
+            return Ok(new
+            {
+                UserId = userId,
+                SubjectId = subjectId,
                 TotalStudyMinutes = totalStudyMinutes,
                 TotalStudyHours = Math.Round(totalStudyMinutes / 60.0, 2),
                 TotalStudySessions = sessions.Count,

@@ -8,12 +8,14 @@ using UserService.Data;
 using UserService.Models;
 using UserService.Services;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseInMemoryDatabase("UserServiceDb"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<TokenService>();
 
@@ -88,9 +90,12 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Apply pending migrations and seed admin account
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    context.Database.Migrate();
+
     if (!context.Users.Any(u => u.Role == "Admin"))
     {
         var hasher = new PasswordHasher<ApplicationUser>();

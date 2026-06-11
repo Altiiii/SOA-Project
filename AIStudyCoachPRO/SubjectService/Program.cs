@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SubjectService.Data;
 using System.Text.Json.Serialization;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -11,7 +13,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 });
 
 builder.Services.AddDbContext<SubjectDbContext>(options =>
-    options.UseInMemoryDatabase("SubjectServiceDb"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -21,6 +23,13 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// Apply pending migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<SubjectDbContext>();
+    context.Database.Migrate();
+}
 
 app.MapControllers();
 
