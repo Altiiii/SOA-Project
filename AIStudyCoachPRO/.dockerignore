@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/TestResults/
+**/.git/
+**/.gitignore
+**/README.md
+**/BACKEND_PRESENTATION_DEFENSE_GUIDE_ALBANIAN.*
+*.Tests/
