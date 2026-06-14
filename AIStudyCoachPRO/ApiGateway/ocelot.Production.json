@@ -119,6 +119,6 @@
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "https://YOUR_RENDER_GATEWAY_URL.onrender.com"
+    "BaseUrl": "https://aistudycoach-gateway.onrender.com"
   }
 }
